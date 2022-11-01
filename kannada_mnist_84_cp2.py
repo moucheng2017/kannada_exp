@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import example
 import argparse
 import torch
 import torch.nn as nn
@@ -8,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, ExponentialLR
 import os
 
 
@@ -17,6 +16,8 @@ def args_parser():
     parser.add_argument('--seed', '-s', default=2022, type=int, help='Random seed')
     parser.add_argument('--lr', default=1e-2, type=float, help='Learning rate')
     parser.add_argument('--gamma', default=0.9, type=float, help='exponential learning decay rate')
+    parser.add_argument('--step_size', default=0.7, type=float, help='step size')
+
     parser.add_argument('--epochs', '-e', default=20, type=int, help='Training epochs')
     # parser.add_argument('--depth', '-d', default=18, type=int, help='Depth of Network')
     # parser.add_argument('--width', '-w', default=32, type=int, help='Width of Network')
@@ -53,6 +54,16 @@ def main(args):
     val_x = np.reshape(val_x, (10240, 1, 28, 28))
     test_x = np.reshape(test_x, (5000, 1, 28, 28))
 
+    # calculate the mean and std:
+    all_x = np.concatenate((train_x, val_x, test_x), axis=0)
+    x_mean = np.nanmean(all_x)
+    x_std = np.nanstd(all_x)
+
+    # normalise images:
+    train_x = (train_x - x_mean + 1e-8) / (x_std + 1e-8)
+    val_x = (val_x - x_mean + 1e-8) / (x_std + 1e-8)
+    test_x = (test_x - x_mean + 1e-8) / (x_std + 1e-8)
+
     # train data loader:
     if args.device == 'gpu':
         torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor).to('cuda')
@@ -80,10 +91,10 @@ def main(args):
         def __init__(self):
             super(Net, self).__init__()
             self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
-            self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
-            self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
-            self.fc1 = nn.Linear(3 * 3 * 64, 128)
-            self.fc2 = nn.Linear(128, 10)
+            self.conv2 = nn.Conv2d(32, 32, kernel_size=7)
+            # self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
+            self.fc1 = nn.Linear(2592, 2592)
+            self.fc2 = nn.Linear(2592, 10)
 
             self.act1 = nn.ReLU(inplace=True)
             self.act2 = nn.ReLU(inplace=True)
@@ -92,14 +103,16 @@ def main(args):
 
         def forward(self, x):
             x = self.act1(self.conv1(x))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act2(F.max_pool2d(self.conv2(x), 2))
+            x = F.dropout(x, p=0.5, training=self.training)
+            # x = self.act3(F.max_pool2d(self.conv3(x), 2))
             # x = F.dropout(x, p=0.5, training=self.training)
-            x = self.act3(F.max_pool2d(self.conv3(x), 2))
-            # x = F.dropout(x, p=0.25, training=self.training)
-            x = x.view(-1, 3 * 3 * 64)
+            # x = x.view(-1, 3 * 3 * 64)
+            x = torch.flatten(x, start_dim=1)
+            # print(x.size())
             x = self.act4(self.fc1(x))
-            x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.8, training=self.training)
             x = self.fc2(x)
             # return x
             return F.log_softmax(x, dim=1)
@@ -110,56 +123,77 @@ def main(args):
         net = Net()
 
     # define loss function and optimizer:
-    # criterion = nn.CrossEntropyLoss()
-    criterion = nn.NLLLoss()
+    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.NLLLoss()
     # optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9)
     optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(.9, .99), weight_decay=0.01)
     # optimizer = optim.Adadelta(net.parameters(), lr=args.lr)
-    # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
     # train the network with validation
     torch.manual_seed(args.seed)
 
     # train the network
-    net.train()
     for epoch in range(args.epochs):
-        # running_loss = 0.0
+        net.train()
+        running_loss = 0.0
+        train_acc = 0.0
+        counter_t = 0
         for i, data in enumerate(train_loader, 0):
+            counter_t += 1
             inputs, labels = data
             #inputs, labels = inputs, labels
-
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            # scheduler.step()
+            running_loss += loss.item()
+            preds = outputs.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct = preds.eq(labels.view_as(preds)).sum().item()
+            train_acc += correct / inputs.size()[0]
+        # print('[epoch %d] loss: %.3f' % (epoch + 1, running_loss / sampling_times))
+        scheduler.step()
+        train_acc = train_acc / counter_t
 
-            # print out stats
-            if (i+1) == (len(train_dataset) // args.batch):
-                # print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, loss.item()))
-                print('[epoch %d] loss: %.3f' % (epoch + 1, loss.item()))
-                # print('[%d, %5d] loss: %.3f, acc: %.3f' % (epoch + 1, i + 1, loss.item(), acc))
+        # evaluation:
+        net.eval()
+        # correct = 0
+        acc = 0
+        counter_v = 0
+        with torch.no_grad():
+            for data, target in val_loader:
+                counter_v += 1
+                data, target = data.to('cuda'), target.to('cuda')
+                # print(data.size())
+                output = net(data)
+                pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+                correct = pred.eq(target.view_as(pred)).sum().item()
+                acc += correct / data.size()[0]
+                # print('Accuracy of the network %d %%' % acc)
+        # val_acc = 100 * correct / len(val_dataset)
+        val_acc = 100 * acc / counter_v
+        # print('Accuracy of the network %d %%' % val_acc)
+        print('[epoch %d] loss: %.4f, train acc:% 4f, val acc: %.4f' % (epoch + 1, running_loss / counter_t, train_acc, val_acc))
 
     print('Finished Training\n')
 
-    # validating
-    # net.eval()
-    # val = net(torch_val_x)
-    # _, predicted = torch.max(val.data, 1)
-    # # acc = 100 * torch.sum(torch_val_y == predicted) / len(torch_val_y)
-    # # print('Accuracy of the network %d %%' % acc)
-    # print('Accuracy of the network %d %%' % (100 * torch.sum(torch_val_y == predicted) / len(val_y)))
-
     net.eval()
-    correct = 0
+    # correct = 0
+    acc = 0
+    counter = 0
     with torch.no_grad():
         for data, target in val_loader:
+            counter += 1
             data, target = data.to('cuda'), target.to('cuda')
+            # print(data.size())
             output = net(data)
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            correct = pred.eq(target.view_as(pred)).sum().item()
+            acc += correct / data.size()[0]
+            # print('Accuracy of the network %d %%' % acc)
 
-    val_acc = 100 * correct / len(val_dataset)
+    # val_acc = 100 * correct / len(val_dataset)
+    val_acc = 100 * acc / counter
     print('Accuracy of the network %d %%' % val_acc)
 
     return net
@@ -172,11 +206,12 @@ if __name__ == '__main__':
 
     # change the hyper parameters here:
     args.path = '/home/moucheng/projects_data/Kannada/Kannada-MNIST'
-    args.batch = 64
+    args.batch = 1024
     args.device = 'gpu'
-    args.epochs = 10
+    args.epochs = 30
     args.seed = 1234
     args.lr = 0.001
-    # args.gamma = 0.9
+    args.gamma = 0.8
+    args.step_size = 10
 
     main(args)

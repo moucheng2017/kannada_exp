@@ -5,16 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="04ba6a09-1f28-4192-9838-65ad8e49115c" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_78.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_78_copy.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Kannada.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Kannada.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_80.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_81.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_83.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_84.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp1.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp3.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp4.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MNIST.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/MNIST.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/helpers.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dataloaders.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kannada_mnist.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dataloaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_78.py" beforeDir="false" afterPath="$PROJECT_DIR$/kannada_mnist_78.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,6 +98,14 @@
       <option name="presentableId" value="Default" />
       <updated>1667074169111</updated>
     </task>
+    <task id="LOCAL-00001" summary="2022 10 31: right now it is 78% very strange">
+      <created>1667250294423</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1667250294423</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -120,6 +130,10 @@
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
     </layout>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="2022 10 31: right now it is 78% very strange" />
+    <option name="LAST_COMMIT_MESSAGE" value="2022 10 31: right now it is 78% very strange" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/helpers.py">

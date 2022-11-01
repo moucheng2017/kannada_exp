@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import example
 import argparse
 import torch
 import torch.nn as nn
@@ -92,14 +91,14 @@ def main(args):
 
         def forward(self, x):
             x = self.act1(self.conv1(x))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act2(F.max_pool2d(self.conv2(x), 2))
-            # x = F.dropout(x, p=0.5, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act3(F.max_pool2d(self.conv3(x), 2))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = x.view(-1, 3 * 3 * 64)
             x = self.act4(self.fc1(x))
-            x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.fc2(x)
             # return x
             return F.log_softmax(x, dim=1)
@@ -172,9 +171,9 @@ if __name__ == '__main__':
 
     # change the hyper parameters here:
     args.path = '/home/moucheng/projects_data/Kannada/Kannada-MNIST'
-    args.batch = 64
+    args.batch = 1024
     args.device = 'gpu'
-    args.epochs = 10
+    args.epochs = 50
     args.seed = 1234
     args.lr = 0.001
     # args.gamma = 0.9

@@ -1,15 +1,24 @@
 import pandas as pd
 import numpy as np
-import example
 import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torchvision import transforms
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, ExponentialLR
 import os
+from Dataset import DatasetMNIST
+
+
+def update_ema_variables(model, ema_model, alpha, global_step):
+    # Use the true average until the exponential average is more correct
+    alpha = min(1 - 1 / (global_step + 1), alpha)
+    for ema_param, param in zip(ema_model.parameters(), model.parameters()):
+        # ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        ema_param.data.mul_(alpha).add_(param.data, alpha=1 - alpha)
 
 
 def args_parser():
@@ -17,6 +26,8 @@ def args_parser():
     parser.add_argument('--seed', '-s', default=2022, type=int, help='Random seed')
     parser.add_argument('--lr', default=1e-2, type=float, help='Learning rate')
     parser.add_argument('--gamma', default=0.9, type=float, help='exponential learning decay rate')
+    parser.add_argument('--step_size', default=0.7, type=float, help='step size')
+
     parser.add_argument('--epochs', '-e', default=20, type=int, help='Training epochs')
     # parser.add_argument('--depth', '-d', default=18, type=int, help='Depth of Network')
     # parser.add_argument('--width', '-w', default=32, type=int, help='Width of Network')
@@ -36,15 +47,15 @@ def main(args):
     test = pd.read_csv(test_data_path)
 
     # split the data:
-    train_x = train.iloc[:, 1:].values / 255.
+    train_x = train.iloc[:, 1:].values
     # train_x = (train_x - 0.1307) / 0.3081
     train_y = train.iloc[:, 0].values
 
-    val_x = val.iloc[:, 1:].values / 255.
+    val_x = val.iloc[:, 1:].values
     # val_x = (val_x - 0.1307) / 0.3081
     val_y = val.iloc[:, 0].values
 
-    test_x = test.iloc[:, 1:].values / 255.
+    test_x = test.iloc[:, 1:].values
     # test_x = (test_x - 0.1307) / 0.3081
     test_id = test.iloc[:, 0].values
 
@@ -53,15 +64,37 @@ def main(args):
     val_x = np.reshape(val_x, (10240, 1, 28, 28))
     test_x = np.reshape(test_x, (5000, 1, 28, 28))
 
-    # train data loader:
-    if args.device == 'gpu':
-        torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor).to('cuda')
-        torch_train_y = torch.from_numpy(train_y).type(torch.LongTensor).to('cuda')
-    else:
-        torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor)
-        torch_train_y = torch.from_numpy(train_y).type(torch.LongTensor)
+    # calculate the mean and std:
+    all_x = np.concatenate((train_x, val_x, test_x), axis=0)
+    x_mean = np.nanmean(all_x)
+    x_std = np.nanstd(all_x)
 
-    train_dataset = torch.utils.data.TensorDataset(torch_train_x, torch_train_y)
+    # # normalise images:
+    train_x = (train_x - x_mean + 1e-8) / (x_std + 1e-8)
+    val_x = (val_x - x_mean + 1e-8) / (x_std + 1e-8)
+    test_x = (test_x - x_mean + 1e-8) / (x_std + 1e-8)
+
+    # train data loader:
+    # if args.device == 'gpu':
+    #     torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor).to('cuda')
+    #     torch_train_y = torch.from_numpy(train_y).type(torch.LongTensor).to('cuda')
+    # else:
+    #     torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor)
+    #     torch_train_y = torch.from_numpy(train_y).type(torch.LongTensor)
+
+    # train_dataset = torch.utils.data.TensorDataset(torch_train_x, torch_train_y)
+
+    train_transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.RandomAffine(degrees=5, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=5),
+        # transforms.RandomCrop(20),
+        # transforms.RandomHorizontalFlip(),
+        # transforms.RandomVerticalFlip(),
+        transforms.ToTensor(),
+        # transforms.Normalize(mean=x_mean, std=x_std)
+    ])
+
+    train_dataset = DatasetMNIST(file_path=train_data_path, transform=train_transform, mean=x_mean, std=x_std)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True, drop_last=True)
 
     # val data loader
@@ -82,8 +115,8 @@ def main(args):
             self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
             self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
             self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
-            self.fc1 = nn.Linear(3 * 3 * 64, 128)
-            self.fc2 = nn.Linear(128, 10)
+            self.fc1 = nn.Linear(3 * 3 * 64, 1024)
+            self.fc2 = nn.Linear(1024, 10)
 
             self.act1 = nn.ReLU(inplace=True)
             self.act2 = nn.ReLU(inplace=True)
@@ -92,54 +125,64 @@ def main(args):
 
         def forward(self, x):
             x = self.act1(self.conv1(x))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act2(F.max_pool2d(self.conv2(x), 2))
-            # x = F.dropout(x, p=0.5, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act3(F.max_pool2d(self.conv3(x), 2))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = x.view(-1, 3 * 3 * 64)
             x = self.act4(self.fc1(x))
-            x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.fc2(x)
-            # return x
-            return F.log_softmax(x, dim=1)
+            return x
+            # return F.log_softmax(x, dim=1)
 
     if args.device == 'gpu':
         net = Net().to('cuda')
+        ema_net = Net().to('cuda')
     else:
         net = Net()
+        ema_net = Net()
 
     # define loss function and optimizer:
-    # criterion = nn.CrossEntropyLoss()
-    criterion = nn.NLLLoss()
+    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.NLLLoss()
     # optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9)
     optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(.9, .99), weight_decay=0.01)
     # optimizer = optim.Adadelta(net.parameters(), lr=args.lr)
-    # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
     # train the network with validation
     torch.manual_seed(args.seed)
 
     # train the network
     net.train()
     for epoch in range(args.epochs):
-        # running_loss = 0.0
+        running_loss = 0.0
+        sampling_times = 0
         for i, data in enumerate(train_loader, 0):
+            sampling_times += 1
             inputs, labels = data
-            #inputs, labels = inputs, labels
 
+            # inputs = inputs / 255.
+            # inputs = (inputs - x_mean) / x_std
+
+            inputs, labels = inputs.to('cuda'), labels.to('cuda')
+            # print(inputs.size())
+            # inputs, labels = torch.from_numpy(inputs).type(torch.FloatTensor).to('cuda'), torch.from_numpy(labels).type(torch.LongTensor).to('cuda')
             optimizer.zero_grad()
             outputs = net(inputs)
+
+            # pseudo_outputs = ema_net(inputs)
+            # pseudo_label = pseudo_outputs.argmax(dim=1).squeeze()
+            # loss = criterion(outputs, labels) + 1.0*criterion(outputs, pseudo_label.long())
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            # scheduler.step()
+            running_loss += loss.item()
+            # update_ema_variables(net, ema_net, 0.9, args.epochs)
 
-            # print out stats
-            if (i+1) == (len(train_dataset) // args.batch):
-                # print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, loss.item()))
-                print('[epoch %d] loss: %.3f' % (epoch + 1, loss.item()))
-                # print('[%d, %5d] loss: %.3f, acc: %.3f' % (epoch + 1, i + 1, loss.item(), acc))
-
+        print('[epoch %d] loss: %.3f' % (epoch + 1, running_loss / sampling_times))
+        scheduler.step()
     print('Finished Training\n')
 
     # validating
@@ -172,11 +215,12 @@ if __name__ == '__main__':
 
     # change the hyper parameters here:
     args.path = '/home/moucheng/projects_data/Kannada/Kannada-MNIST'
-    args.batch = 64
+    args.batch = 1024
     args.device = 'gpu'
-    args.epochs = 10
+    args.epochs = 100
     args.seed = 1234
     args.lr = 0.001
-    # args.gamma = 0.9
+    args.gamma = 0.1
+    args.step_size = 80
 
     main(args)

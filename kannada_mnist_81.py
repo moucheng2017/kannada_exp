@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, ExponentialLR
 import os
 
 
@@ -92,14 +92,14 @@ def main(args):
 
         def forward(self, x):
             x = self.act1(self.conv1(x))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act2(F.max_pool2d(self.conv2(x), 2))
-            # x = F.dropout(x, p=0.5, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.act3(F.max_pool2d(self.conv3(x), 2))
-            # x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = x.view(-1, 3 * 3 * 64)
             x = self.act4(self.fc1(x))
-            x = F.dropout(x, p=0.25, training=self.training)
+            x = F.dropout(x, p=0.5, training=self.training)
             x = self.fc2(x)
             # return x
             return F.log_softmax(x, dim=1)
@@ -115,7 +115,7 @@ def main(args):
     # optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9)
     optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(.9, .99), weight_decay=0.01)
     # optimizer = optim.Adadelta(net.parameters(), lr=args.lr)
-    # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    scheduler = ExponentialLR(optimizer, gamma=args.gamma)
     # train the network with validation
     torch.manual_seed(args.seed)
 
@@ -132,13 +132,14 @@ def main(args):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            # scheduler.step()
 
             # print out stats
             if (i+1) == (len(train_dataset) // args.batch):
                 # print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, loss.item()))
                 print('[epoch %d] loss: %.3f' % (epoch + 1, loss.item()))
                 # print('[%d, %5d] loss: %.3f, acc: %.3f' % (epoch + 1, i + 1, loss.item(), acc))
+
+        scheduler.step()
 
     print('Finished Training\n')
 
@@ -172,11 +173,11 @@ if __name__ == '__main__':
 
     # change the hyper parameters here:
     args.path = '/home/moucheng/projects_data/Kannada/Kannada-MNIST'
-    args.batch = 64
+    args.batch = 1024
     args.device = 'gpu'
-    args.epochs = 10
+    args.epochs = 50
     args.seed = 1234
     args.lr = 0.001
-    # args.gamma = 0.9
+    args.gamma = 0.99
 
     main(args)
