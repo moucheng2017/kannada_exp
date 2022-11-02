@@ -18,6 +18,7 @@ def args_parser():
     parser.add_argument('--lr', default=1e-2, type=float, help='Learning rate')
     parser.add_argument('--gamma', default=0.9, type=float, help='exponential learning decay rate')
     parser.add_argument('--step_size', default=0.7, type=float, help='step size')
+    parser.add_argument('--augmentation', default=1, type=int, help='data augmentation flag, 1 when use it and 0 when not use it')
 
     parser.add_argument('--epochs', '-e', default=20, type=int, help='Training epochs')
     # parser.add_argument('--depth', '-d', default=18, type=int, help='Depth of Network')
@@ -65,7 +66,7 @@ def main(args):
     val_x = (val_x - x_mean + 1e-8) / (x_std + 1e-8)
     test_x = (test_x - x_mean + 1e-8) / (x_std + 1e-8)
 
-    train_dataset = DatasetKannadaMNIST(images_path=train_data_path, labels_path=train_data_path, augmentation=1, mean=x_mean, std=x_std)
+    train_dataset = DatasetKannadaMNIST(images_path=train_data_path, labels_path=train_data_path, augmentation=args.augmentation, mean=x_mean, std=x_std)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True, drop_last=True)
 
     # val data loader
@@ -212,5 +213,6 @@ if __name__ == '__main__':
     args.lr = 0.001
     args.gamma = 0.7
     args.step_size = 10
+    args.augmentation = 0
 
     main(args)
