@@ -4,19 +4,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="04ba6a09-1f28-4192-9838-65ad8e49115c" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_80.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_81.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_83.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_84.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp1.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp2.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp3.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kannada_mnist_84_cp4.py" afterDir="false" />
+    <list default="true" id="04ba6a09-1f28-4192-9838-65ad8e49115c" name="Default Changelist" comment="2022 11 01: there is a bug with their dataset I think... so the testing acc is way higher than the val acc">
+      <change afterPath="$PROJECT_DIR$/Model_vgg.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Models.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/kannada_mnist_resnet50.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Dataloaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kannada_mnist_78.py" beforeDir="false" afterPath="$PROJECT_DIR$/kannada_mnist_78.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.ipynb_checkpoints/MNIST-checkpoint.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_78.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_80.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_81.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_83.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_84.py" beforeDir="false" afterPath="$PROJECT_DIR$/kannada_mnist_84.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_84_cp1.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_84_cp2.py" beforeDir="false" afterPath="$PROJECT_DIR$/kannada_mnist_aug.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_84_cp3.py" beforeDir="false" afterPath="$PROJECT_DIR$/kannada_mnist_resent18.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_84_cp4.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,13 +77,13 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "last_opened_file_path": "/home/moucheng/projects_codes/kannada_exp",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/moucheng/projects_codes/kannada_exp&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -105,7 +108,14 @@
       <option name="project" value="LOCAL" />
       <updated>1667250294423</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="2022 11 01: there is a bug with their dataset I think... so the testing acc is way higher than the val acc">
+      <created>1667340244289</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1667340244289</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -133,7 +143,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="2022 10 31: right now it is 78% very strange" />
-    <option name="LAST_COMMIT_MESSAGE" value="2022 10 31: right now it is 78% very strange" />
+    <MESSAGE value="2022 11 01: there is a bug with their dataset I think... so the testing acc is way higher than the val acc" />
+    <option name="LAST_COMMIT_MESSAGE" value="2022 11 01: there is a bug with their dataset I think... so the testing acc is way higher than the val acc" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/helpers.py">

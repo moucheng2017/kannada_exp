@@ -115,8 +115,8 @@ def main(args):
             x = self.act4(self.fc1(x))
             x = F.dropout(x, p=0.5, training=self.training)
             x = self.fc2(x)
-            # return x
-            return F.log_softmax(x, dim=1)
+            return x
+            # return F.log_softmax(x, dim=1)
 
     if args.device == 'gpu':
         net = Net().to('cuda')
@@ -184,11 +184,11 @@ def main(args):
         predictions += list(pred.data.cpu().numpy())
 
     # print(predictions)
-    test_sample_path = os.path.join(args.path, 'sample_submission.csv')
-    submission = pd.read_csv(test_sample_path)
-    submission['label'] = predictions
-    submission.to_csv(test_data_path, index=False)
-    submission.head()
+    # test_sample_path = os.path.join(args.path, 'sample_submission.csv')
+    # submission = pd.read_csv(test_sample_path)
+    # submission['label'] = predictions
+    # submission.to_csv(test_data_path, index=False)
+    # submission.head()
     #
     # return net
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # change the hyper parameters here:
-    args.path = '/home/moucheng/projects_data/Kannada/Kannada-MNIST'
+    args.path = '/home/moucheng/projects_data/Kannada-MNIST'
     args.batch = 1024
     args.device = 'gpu'
     args.epochs = 100

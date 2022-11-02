@@ -5,11 +5,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-import matplotlib.pyplot as plt
-from torch.optim.lr_scheduler import StepLR, ExponentialLR
+from torch.utils.data import TensorDataset
+from torch.optim.lr_scheduler import StepLR
 import os
+from Dataset import DatasetKMNIST
+from torchvision import transforms
 
+from Models import *
 
 def args_parser():
     parser = argparse.ArgumentParser('', add_help=False)
@@ -38,16 +40,12 @@ def main(args):
 
     # split the data:
     train_x = train.iloc[:, 1:].values / 255.
-    # train_x = (train_x - 0.1307) / 0.3081
     train_y = train.iloc[:, 0].values
 
     val_x = val.iloc[:, 1:].values / 255.
-    # val_x = (val_x - 0.1307) / 0.3081
     val_y = val.iloc[:, 0].values
 
     test_x = test.iloc[:, 1:].values / 255.
-    # test_x = (test_x - 0.1307) / 0.3081
-    test_id = test.iloc[:, 0].values
 
     # reshape the data:
     train_x = np.reshape(train_x, (60000, 1, 28, 28))
@@ -72,7 +70,16 @@ def main(args):
         torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor)
         torch_train_y = torch.from_numpy(train_y).type(torch.LongTensor)
 
+    # transform:
+    # transform = transforms.Compose([
+    #     transforms.ToPILImage(),
+    #     transforms.RandomCrop(28),
+    #     # transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
+    #     transforms.RandomRotation(degrees=(0, 180)),
+    #     transforms.ToTensor()
+    # ])
     train_dataset = torch.utils.data.TensorDataset(torch_train_x, torch_train_y)
+    # train_dataset = DatasetKMNIST(images_path=train_data_path, labels_path=train_data_path, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True, drop_last=True)
 
     # val data loader
@@ -86,41 +93,49 @@ def main(args):
     val_dataset = torch.utils.data.TensorDataset(torch_val_x, torch_val_y)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False, drop_last=False)
 
-    # define a model
-    class Net(nn.Module):
-        def __init__(self):
-            super(Net, self).__init__()
-            self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
-            self.conv2 = nn.Conv2d(32, 32, kernel_size=7)
-            # self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
-            self.fc1 = nn.Linear(2592, 2592)
-            self.fc2 = nn.Linear(2592, 10)
-
-            self.act1 = nn.ReLU(inplace=True)
-            self.act2 = nn.ReLU(inplace=True)
-            self.act3 = nn.ReLU(inplace=True)
-            self.act4 = nn.ReLU(inplace=True)
-
-        def forward(self, x):
-            x = self.act1(self.conv1(x))
-            x = F.dropout(x, p=0.5, training=self.training)
-            x = self.act2(F.max_pool2d(self.conv2(x), 2))
-            x = F.dropout(x, p=0.5, training=self.training)
-            # x = self.act3(F.max_pool2d(self.conv3(x), 2))
-            # x = F.dropout(x, p=0.5, training=self.training)
-            # x = x.view(-1, 3 * 3 * 64)
-            x = torch.flatten(x, start_dim=1)
-            # print(x.size())
-            x = self.act4(self.fc1(x))
-            x = F.dropout(x, p=0.8, training=self.training)
-            x = self.fc2(x)
-            # return x
-            return F.log_softmax(x, dim=1)
-
+    # test data loader:
     if args.device == 'gpu':
-        net = Net().to('cuda')
+        torch_test_x = torch.from_numpy(test_x).type(torch.FloatTensor).to('cuda')
     else:
-        net = Net()
+        torch_test_x = torch.from_numpy(test_x).type(torch.FloatTensor)
+
+    test_dataset = torch.utils.data.TensorDataset(torch_test_x)
+
+    # define a model
+    # class Net(nn.Module):
+    #     def __init__(self):
+    #         super(Net, self).__init__()
+    #         self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
+    #         self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
+    #         self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
+    #         self.fc1 = nn.Linear(3 * 3 * 64, 1024)
+    #         self.fc2 = nn.Linear(1024, 10)
+    #
+    #         self.act1 = nn.ReLU(inplace=True)
+    #         self.act2 = nn.ReLU(inplace=True)
+    #         self.act3 = nn.ReLU(inplace=True)
+    #         self.act4 = nn.ReLU(inplace=True)
+    #
+    #     def forward(self, x):
+    #         x = self.act1(self.conv1(x))
+    #         x = F.dropout(x, p=0.5, training=self.training)
+    #         x = self.act2(F.max_pool2d(self.conv2(x), 2))
+    #         x = F.dropout(x, p=0.5, training=self.training)
+    #         x = self.act3(F.max_pool2d(self.conv3(x), 2))
+    #         x = F.dropout(x, p=0.5, training=self.training)
+    #         x = x.view(-1, 3 * 3 * 64)
+    #         x = self.act4(self.fc1(x))
+    #         x = F.dropout(x, p=0.5, training=self.training)
+    #         x = self.fc2(x)
+    #         # return x
+    #         return F.log_softmax(x, dim=1)
+
+    net = ResNet50(10, 1).to('cuda')
+
+    # if args.device == 'gpu':
+    #     net = Net().to('cuda')
+    # else:
+    #     net = Net()
 
     # define loss function and optimizer:
     criterion = nn.CrossEntropyLoss()
@@ -177,26 +192,45 @@ def main(args):
 
     print('Finished Training\n')
 
-    net.eval()
+    # validating
+    # net.eval()
+    # val = net(torch_val_x)
+    # _, predicted = torch.max(val.data, 1)
+    # # acc = 100 * torch.sum(torch_val_y == predicted) / len(torch_val_y)
+    # # print('Accuracy of the network %d %%' % acc)
+    # print('Accuracy of the network %d %%' % (100 * torch.sum(torch_val_y == predicted) / len(val_y)))
+
+    # net.eval()
     # correct = 0
-    acc = 0
-    counter = 0
-    with torch.no_grad():
-        for data, target in val_loader:
-            counter += 1
-            data, target = data.to('cuda'), target.to('cuda')
-            # print(data.size())
-            output = net(data)
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct = pred.eq(target.view_as(pred)).sum().item()
-            acc += correct / data.size()[0]
-            # print('Accuracy of the network %d %%' % acc)
-
+    # with torch.no_grad():
+    #     for data, target in val_loader:
+    #         data, target = data.to('cuda'), target.to('cuda')
+    #         output = net(data)
+    #         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+    #         correct += pred.eq(target.view_as(pred)).sum().item()
+    #
     # val_acc = 100 * correct / len(val_dataset)
-    val_acc = 100 * acc / counter
-    print('Accuracy of the network %d %%' % val_acc)
+    # print('Accuracy of the network %d %%' % val_acc)
 
-    return net
+    # test:
+    # net.eval()
+    # predictions = []
+    # test_x_o = np.shape(test_x)[0]
+    #
+    # for i in range(test_x_o):
+    #     data = np.expand_dims(test_x[i, :, :, :], axis=0)
+    #     data = torch.from_numpy(data).type(torch.FloatTensor).to('cuda')
+    #     pred = net(data).max(dim=1)[1]
+    #     predictions += list(pred.data.cpu().numpy())
+
+    # print(predictions)
+    # test_sample_path = os.path.join(args.path, 'sample_submission.csv')
+    # submission = pd.read_csv(test_sample_path)
+    # submission['label'] = predictions
+    # submission.to_csv(test_data_path, index=False)
+    # submission.head()
+    #
+    # return net
 
 
 if __name__ == '__main__':
@@ -205,13 +239,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # change the hyper parameters here:
-    args.path = '/home/moucheng/projects_data/Kannada/Kannada-MNIST'
+    args.path = '/home/moucheng/projects_data/Kannada-MNIST'
     args.batch = 1024
     args.device = 'gpu'
-    args.epochs = 30
+    args.epochs = 20
+    # args.epochs = 1
     args.seed = 1234
     args.lr = 0.001
-    args.gamma = 0.8
-    args.step_size = 10
+    args.gamma = 0.7
+    args.step_size = 80
 
     main(args)

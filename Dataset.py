@@ -15,17 +15,14 @@ class RandomZoom(object):
     # We zoom out the foreground parts when labels are available
     # We also zoom out the slices in the start and the end
     def __init__(self,
-                 zoom_ratio_h=(0.5, 0.7),
-                 zoom_ratio_w=(0.5, 0.7)):
+                 zoom_ratio=(0.5, 0.9)):
+        self.zoom_ratio = zoom_ratio
 
-        self.zoom_ratio_h = zoom_ratio_h
-        self.zoom_ratio_w = zoom_ratio_w
-
-    def sample_positions(self, label):
-        ratio_h = round(random.uniform(self.zoom_ratio_h[0], self.zoom_ratio_h[1]), 2)
-        ratio_w = round(random.uniform(self.zoom_ratio_w[0], self.zoom_ratio_w[1]), 2)
+    def sample_positions(self, image):
+        ratio_h = round(random.uniform(self.zoom_ratio[0], self.zoom_ratio[1]), 2)
+        ratio_w = round(random.uniform(self.zoom_ratio[0], self.zoom_ratio[1]), 2)
         # get image size upper bounds:
-        h, w = np.shape(label)[-2], np.shape(label)[-1]
+        h, w = np.shape(image)[-2], np.shape(image)[-1]
         # get cropping upper bounds:
         upper_h, upper_w = int(h*(1-ratio_h)), int(w*(1-ratio_w))
         # sampling positions:
@@ -34,31 +31,20 @@ class RandomZoom(object):
         size_h, size_w = int(h * ratio_h), int(w * ratio_w)
         return sample_h, sample_w, size_h, size_w, ratio_h, ratio_w
 
-    def sample_patch(self, image, label):
-
-        h0, w0, new_h, new_w, ratio_h, ratio_w = self.sample_positions(label)
-        cropped_image = image[h0:h0 + int(new_h), w0:w0 + int(new_w)]
-        cropped_label = label[h0:h0 + int(new_h), w0:w0 + int(new_w)]
+    def sample_patch(self, image):
+        h0, w0, new_h, new_w, ratio_h, ratio_w = self.sample_positions(image)
+        cropped_image = image[:, h0:h0 + int(new_h), w0:w0 + int(new_w)]
 
         # upsample them:
-        zoomed_image = scipy.ndimage.zoom(input=cropped_image, zoom=(math.ceil(1 / ratio_h), math.ceil(1 / ratio_w)), order=1)
-        zoomed_label = scipy.ndimage.zoom(input=cropped_label, zoom=(math.ceil(1 / ratio_h), math.ceil(1 / ratio_w)), order=0)
+        zoomed_image = scipy.ndimage.zoom(input=cropped_image, zoom=(1, math.ceil(1 / ratio_h), math.ceil(1 / ratio_w)), order=1)
+        return zoomed_image
 
-        return zoomed_image, zoomed_label
-
-    def forward(self, image, label):
-        image, label = np.squeeze(image), np.squeeze(label)
-        image_zoomed, label_zoomed = self.sample_patch(image, label)
-
+    def forward(self, image):
+        image_zoomed = self.sample_patch(image)
         # crop again to makes the zoomed image has the same size as the original image size:
-        h, w = np.shape(label)[-2], np.shape(label)[-1]
-        image_zoomed, label_zoomed = image_zoomed[0:h, 0:w], label_zoomed[0:h, 0:w]
-        h2, w2 = np.shape(label_zoomed)[-2], np.shape(label_zoomed)[-1]
-
-        assert h2 == h
-        assert w2 == w
-
-        return image_zoomed, label_zoomed
+        h, w = np.shape(image)[-2], np.shape(image)[-1]
+        image_zoomed = image_zoomed[:, 0:h, 0:w]
+        return image_zoomed
 
 
 class RandomContrast(object):
@@ -68,9 +54,7 @@ class RandomContrast(object):
         self.bin_range = bin_range
 
     def randomintensity(self, input):
-
         augmentation_flag = np.random.rand()
-
         if augmentation_flag >= 0.5:
             # bin = np.random.choice(self.bin_range)
             bin = random.randint(self.bin_range[0], self.bin_range[1])
@@ -83,7 +67,6 @@ class RandomContrast(object):
             output = np.reshape(output, (c, h, w))
         else:
             output = input
-
         return output
 
 
@@ -102,127 +85,90 @@ class RandomGaussian(object):
         return input
 
 
-def randomcutout(x, y):
-    '''
-    Args:
-        x: segmentation
-        y: gt
-    Returns:
-    '''
-    b, c, h, w = x.size()
-    h_mask, w_mask = random.randint(int(h // 5), int(h // 2)), random.randint(int(w // 5), int(w // 2))
+class RandomCut(object):
+    def __init__(self, patch_range=(7, 14)):
+        self.patch_range = patch_range
 
-    h_starting = np.random.randint(0, h - h_mask)
-    w_starting = np.random.randint(0, w - h_mask)
-    h_ending = h_starting + h_mask
-    w_ending = w_starting + w_mask
+    def cutout(self, input):
 
-    mask = torch.ones_like(x).cuda()
-    mask[:, :, h_starting:h_ending, w_starting:w_ending] = 0
+        patch_h = np.random.randint(self.patch_range[0], self.patch_range[1])
+        patch_w = np.random.randint(self.patch_range[0], self.patch_range[1])
 
-    return x*mask, y*mask
+        h0 = np.random.randint(0, 28 - patch_h)
+        w0 = np.random.randint(0, 28 - patch_w)
+        input[:, h0:h0+patch_h, w0:w0+patch_w] = 0
+
+        return input
 
 
-def normalisation(label, image):
-    # Case-wise normalisation
-    # Normalisation using values inside of the foreground mask
+class DatasetKannadaMNIST(Dataset):
+    def __init__(self, images_path, labels_path, augmentation, mean, std):
+        self.images = pd.read_csv(images_path)
+        self.labels_path = labels_path
+        if self.labels_path is not None:
+            self.labels = pd.read_csv(labels_path)
 
-    if label is None:
-        lung_mean = np.nanmean(image)
-        lung_std = np.nanstd(image)
-    else:
-        image_masked = ma.masked_where(label > 0.5, image)
-        lung_mean = np.nanmean(image_masked)
-        lung_std = np.nanstd(image_masked)
+        self.augmentation = augmentation
+        if self.augmentation == 1:
+            self.aug_gaussian_noise = RandomGaussian()
+            self.aug_contrast = RandomContrast(bin_range=(10, 255))
+            self.aug_random_zoom = RandomZoom()
+            self.aug_random_cutout = RandomCut()
 
-    image = (image - lung_mean + 1e-10) / (lung_std + 1e-10)
-    return image
-
-
-class DatasetMNIST(Dataset):
-
-    def __init__(self, file_path, transform, mean, std):
-        self.data = pd.read_csv(file_path)
-        self.transform = transform
         self.mean = mean
         self.std = std
 
     def __len__(self):
-        return len(self.data)
+        return np.shape(self.images.iloc[:, 1:])[0]
 
     def __getitem__(self, index):
-        # load image as ndarray type (Height * Width * Channels)
-        # be carefull for converting dtype to np.uint8 [Unsigned integer (0 to 255)]
-        # in this example, i don't use ToTensor() method of torchvision.transforms
-        # so you can convert numpy ndarray shape to tensor in PyTorch (H, W, C) --> (C, H, W)
-        # image = self.data.iloc[index, 1:].values.astype(np.uint8).reshape((28, 28, 1))
-        image = self.data.iloc[index, 1:].values.astype(np.uint8).reshape((28, 28, 1))
-        label = self.data.iloc[index, 0]
+        # Read images:
+        image = self.images.iloc[index, 1:].values.reshape((1, 28, 28)) / 255. # C x H x W
 
-        if self.transform is not None:
-            image = self.transform(image)
-            # image = image / 255.
-            # image = (image - self.x_mean) / self.x_std
+        # Normlisation on image:
+        image = (image - self.mean + 1e-10) / (self.std + 1e-10)
 
-        return image, label
+        if self.augmentation == 1:
+            # do augmentation
+            if random.random() >= 0.5:
+                # image = self.aug_gaussian_noise.gaussiannoise(image)
+                # image = self.aug_contrast.randomintensity(image)
+                # image = self.aug_random_zoom.forward(image)
+                image = self.aug_random_cutout.cutout(image)
+                image = (image - self.mean + 1e-10) / (self.std + 1e-10)
 
-# class KMNIST_Data(Dataset):
-#     def __init__(self,
-#                  images_folder,
-#                  labels_folder,
-#                  normalisation_mean,
-#                  normalisation_std,
-#                  gaussian_aug=1,
-#                  zoom_aug=1,
-#                  contrast_aug=1):
+        if self.labels_path is not None:
+            label = self.labels.iloc[index, 0]
+            return image, label
+        else:
+            return image
+
+
+# class DatasetKMNIST(Dataset):
+#     def __init__(self, images_path, labels_path, transform):
+#         self.images = pd.read_csv(images_path)
+#         self.labels_path = labels_path
+#         self.transform = transform
+#         if self.labels_path is not None:
+#             self.labels = pd.read_csv(labels_path)
 #
-#         # data
-#         self.imgs_folder = images_folder
-#         self.lbls_folder = labels_folder
-#
-#         self.augmentation_contrast = RandomContrast(bin_range=(20, 255))
-#         self.gaussian_noise = RandomGaussian()
+#     def __len__(self):
+#         return np.shape(self.images.iloc[:, 1:])[0]
 #
 #     def __getitem__(self, index):
-#         image = pd.read_csv(self.imgs_folder)
-#         image = image.iloc[:, 1:].values / 255.
-#         image = np.reshape(image, (-1, 1, 28, 28))
-#         image = np.array(image, dtype='float32')
-#
-#         lbl = pd.read_csv(self.lbls_folder)
-#         lbl = lbl.iloc[:, 1:].values / 255.
-#         lbl = np.reshape(lbl, (-1, 1, 28, 28))
-#
-#         image = normalisation(label, image)
-#
-#         image_queue.append(image)
-#
-#         # Random contrast:
-#         if self.contrast_aug_flag == 1:
-#             image_another_contrast = self.augmentation_contrast.randomintensity(image)
-#             image_queue.append(image_another_contrast)
-#
-#         # Random Gaussian:
-#         if self.gaussian_aug_flag == 1:
-#             image_noise = self.gaussian_noise.gaussiannoise(image)
-#             image_queue.append(image_noise)
-#
-#         # weights:
-#         dirichlet_alpha = collections.deque()
-#         for i in range(len(image_queue)):
-#             dirichlet_alpha.append(1)
-#         dirichlet_weights = np.random.dirichlet(tuple(dirichlet_alpha), 1)
-#
-#         # make a new image:
-#         image_weighted = [weight*img for weight, img in zip(dirichlet_weights[0], image_queue)]
-#         image_weighted = sum(image_weighted)
-#
-#         # Apply normalisation at each case-wise again:
-#         if self.normalisation_flag == 1:
-#             image_weighted = normalisation(label, image_weighted)
-#
-#         # get slices by weighted sampling on each axis with zoom in augmentation:
-#         inputs_dict = self.augmentation_cropping.crop(image_weighted, label)
-#
-#         return inputs_dict, imagename
+#         # Read images:
+#         image = self.images.iloc[index, 1:].values.astype(np.uint8).reshape((28, 28, 1)) # H x W x C
+#         image = self.transform(image)
+#         # Read labels:
+#         if self.labels_path is not None:
+#             label = self.labels.iloc[index, 0]
+#             return image, label
+#         else:
+#             return image
+
+
+
+
+
+
 
