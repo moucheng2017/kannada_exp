@@ -8,10 +8,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset
 from torch.optim.lr_scheduler import StepLR
 import os
-from Dataset import DatasetKMNIST
-from torchvision import transforms
 
-from Models import *
 
 def args_parser():
     parser = argparse.ArgumentParser('', add_help=False)
@@ -70,16 +67,7 @@ def main(args):
         torch_train_x = torch.from_numpy(train_x).type(torch.FloatTensor)
         torch_train_y = torch.from_numpy(train_y).type(torch.LongTensor)
 
-    # transform:
-    # transform = transforms.Compose([
-    #     transforms.ToPILImage(),
-    #     transforms.RandomCrop(28),
-    #     # transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
-    #     transforms.RandomRotation(degrees=(0, 180)),
-    #     transforms.ToTensor()
-    # ])
     train_dataset = torch.utils.data.TensorDataset(torch_train_x, torch_train_y)
-    # train_dataset = DatasetKMNIST(images_path=train_data_path, labels_path=train_data_path, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True, drop_last=True)
 
     # val data loader
@@ -102,59 +90,55 @@ def main(args):
     test_dataset = torch.utils.data.TensorDataset(torch_test_x)
 
     # define a model
-    # class Net(nn.Module):
-    #     def __init__(self):
-    #         super(Net, self).__init__()
-    #         self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
-    #         self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
-    #         self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
-    #         self.fc1 = nn.Linear(3 * 3 * 64, 1024)
-    #         self.fc2 = nn.Linear(1024, 10)
-    #
-    #         self.act1 = nn.ReLU(inplace=True)
-    #         self.act2 = nn.ReLU(inplace=True)
-    #         self.act3 = nn.ReLU(inplace=True)
-    #         self.act4 = nn.ReLU(inplace=True)
-    #
-    #     def forward(self, x):
-    #         x = self.act1(self.conv1(x))
-    #         x = F.dropout(x, p=0.5, training=self.training)
-    #         x = self.act2(F.max_pool2d(self.conv2(x), 2))
-    #         x = F.dropout(x, p=0.5, training=self.training)
-    #         x = self.act3(F.max_pool2d(self.conv3(x), 2))
-    #         x = F.dropout(x, p=0.5, training=self.training)
-    #         x = x.view(-1, 3 * 3 * 64)
-    #         x = self.act4(self.fc1(x))
-    #         x = F.dropout(x, p=0.5, training=self.training)
-    #         x = self.fc2(x)
-    #         # return x
-    #         return F.log_softmax(x, dim=1)
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
+            self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
+            self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
+            self.fc1 = nn.Linear(3 * 3 * 64, 1024)
+            self.fc2 = nn.Linear(1024, 10)
 
-    net = ResNet50(10, 1).to('cuda')
+            self.act1 = nn.ReLU(inplace=True)
+            self.act2 = nn.ReLU(inplace=True)
+            self.act3 = nn.ReLU(inplace=True)
+            self.act4 = nn.ReLU(inplace=True)
 
-    # if args.device == 'gpu':
-    #     net = Net().to('cuda')
-    # else:
-    #     net = Net()
+        def forward(self, x):
+            x = self.act1(self.conv1(x))
+            x = F.dropout(x, p=0.5, training=self.training)
+            x = self.act2(F.max_pool2d(self.conv2(x), 2))
+            x = F.dropout(x, p=0.5, training=self.training)
+            x = self.act3(F.max_pool2d(self.conv3(x), 2))
+            x = F.dropout(x, p=0.5, training=self.training)
+            x = x.view(-1, 3 * 3 * 64)
+            x = self.act4(self.fc1(x))
+            x = F.dropout(x, p=0.5, training=self.training)
+            x = self.fc2(x)
+            return x
+
+    if args.device == 'gpu':
+        net = Net().to('cuda')
+    else:
+        net = Net()
 
     # define loss function and optimizer:
     criterion = nn.CrossEntropyLoss()
     # criterion = nn.NLLLoss()
-    # optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9)
-    optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(.9, .99), weight_decay=0.01)
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9)
+    # optimizer = optim.AdamW(net.parameters(), lr=args.lr, betas=(.9, .99), weight_decay=0.01)
     # optimizer = optim.Adadelta(net.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
     # train the network with validation
     torch.manual_seed(args.seed)
 
     # train the network
+    net.train()
     for epoch in range(args.epochs):
-        net.train()
         running_loss = 0.0
-        train_acc = 0.0
-        counter_t = 0
+        sampling_times = 0
         for i, data in enumerate(train_loader, 0):
-            counter_t += 1
+            sampling_times += 1
             inputs, labels = data
             #inputs, labels = inputs, labels
             optimizer.zero_grad()
@@ -163,33 +147,8 @@ def main(args):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
-            preds = outputs.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct = preds.eq(labels.view_as(preds)).sum().item()
-            train_acc += correct / inputs.size()[0]
-        # print('[epoch %d] loss: %.3f' % (epoch + 1, running_loss / sampling_times))
+        print('[epoch %d] loss: %.3f' % (epoch + 1, running_loss / sampling_times))
         scheduler.step()
-        train_acc = train_acc / counter_t
-
-        # evaluation:
-        net.eval()
-        # correct = 0
-        acc = 0
-        counter_v = 0
-        with torch.no_grad():
-            for data, target in val_loader:
-                counter_v += 1
-                data, target = data.to('cuda'), target.to('cuda')
-                # print(data.size())
-                output = net(data)
-                pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-                correct = pred.eq(target.view_as(pred)).sum().item()
-                acc += correct / data.size()[0]
-                # print('Accuracy of the network %d %%' % acc)
-        # val_acc = 100 * correct / len(val_dataset)
-        val_acc = 100 * acc / counter_v
-        # print('Accuracy of the network %d %%' % val_acc)
-        print('[epoch %d] loss: %.4f, train acc:% 4f, val acc: %.4f' % (epoch + 1, running_loss / counter_t, train_acc, val_acc))
-
     print('Finished Training\n')
 
     # validating
@@ -200,28 +159,28 @@ def main(args):
     # # print('Accuracy of the network %d %%' % acc)
     # print('Accuracy of the network %d %%' % (100 * torch.sum(torch_val_y == predicted) / len(val_y)))
 
-    # net.eval()
-    # correct = 0
-    # with torch.no_grad():
-    #     for data, target in val_loader:
-    #         data, target = data.to('cuda'), target.to('cuda')
-    #         output = net(data)
-    #         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-    #         correct += pred.eq(target.view_as(pred)).sum().item()
-    #
-    # val_acc = 100 * correct / len(val_dataset)
-    # print('Accuracy of the network %d %%' % val_acc)
+    net.eval()
+    correct = 0
+    with torch.no_grad():
+        for data, target in val_loader:
+            data, target = data.to('cuda'), target.to('cuda')
+            output = net(data)
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    val_acc = 100 * correct / len(val_dataset)
+    print('Accuracy of the network %d %%' % val_acc)
 
     # test:
-    # net.eval()
-    # predictions = []
-    # test_x_o = np.shape(test_x)[0]
-    #
-    # for i in range(test_x_o):
-    #     data = np.expand_dims(test_x[i, :, :, :], axis=0)
-    #     data = torch.from_numpy(data).type(torch.FloatTensor).to('cuda')
-    #     pred = net(data).max(dim=1)[1]
-    #     predictions += list(pred.data.cpu().numpy())
+    net.eval()
+    predictions = []
+    test_x_o = np.shape(test_x)[0]
+
+    for i in range(test_x_o):
+        data = np.expand_dims(test_x[i, :, :, :], axis=0)
+        data = torch.from_numpy(data).type(torch.FloatTensor).to('cuda')
+        pred = net(data).max(dim=1)[1]
+        predictions += list(pred.data.cpu().numpy())
 
     # print(predictions)
     # test_sample_path = os.path.join(args.path, 'sample_submission.csv')
@@ -242,11 +201,10 @@ if __name__ == '__main__':
     args.path = '/home/moucheng/projects_data/Kannada-MNIST'
     args.batch = 1024
     args.device = 'gpu'
-    args.epochs = 20
-    # args.epochs = 1
+    args.epochs = 200
     args.seed = 1234
-    args.lr = 0.001
-    args.gamma = 0.7
-    args.step_size = 80
+    args.lr = 0.1
+    args.gamma = 0.99
+    args.step_size = 1
 
     main(args)

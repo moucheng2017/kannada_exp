@@ -131,7 +131,7 @@ class DatasetKannadaMNIST(Dataset):
         if self.augmentation == 1:
             # do augmentation
             if random.random() >= 0.5:
-                # image = self.aug_gaussian_noise.gaussiannoise(image)
+                image = self.aug_gaussian_noise.gaussiannoise(image)
                 # image = self.aug_contrast.randomintensity(image)
                 # image = self.aug_random_zoom.forward(image)
                 image = self.aug_random_cutout.cutout(image)

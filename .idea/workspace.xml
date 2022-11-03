@@ -5,8 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="04ba6a09-1f28-4192-9838-65ad8e49115c" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/Helpers.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Helpers_swa.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Model_cnn.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Models_resnet.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Run_ensemble.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Run_ensemble_v6.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/v0_baseline_sgd_aug.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/v0_baseline_sgd_w16.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/v1_baseline.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/v5_ensemble.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/v6_ensemble_swa.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kannada_mnist_aug.py" beforeDir="false" afterPath="$PROJECT_DIR$/kannada_mnist_aug.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/Dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Models.py" beforeDir="false" afterPath="$PROJECT_DIR$/Models_resnet152.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_84.py" beforeDir="false" afterPath="$PROJECT_DIR$/v0_baseline_sgd.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_aug.py" beforeDir="false" afterPath="$PROJECT_DIR$/v2_aug.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_resent18.py" beforeDir="false" afterPath="$PROJECT_DIR$/v3_resent18.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kannada_mnist_resnet50.py" beforeDir="false" afterPath="$PROJECT_DIR$/v4_resnet50.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -109,7 +125,14 @@
       <option name="project" value="LOCAL" />
       <updated>1667423422147</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="2022 11 02b: now added a flag">
+      <created>1667423710961</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1667423710961</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -135,11 +158,23 @@
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
     </layout>
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="2022 10 31: right now it is 78% very strange" />
     <MESSAGE value="2022 11 01: there is a bug with their dataset I think... so the testing acc is way higher than the val acc" />
     <MESSAGE value="2022 11 02: added kannada mnist aug with cut out augmentation, now the acc doesn't go above certain level anymore" />
-    <option name="LAST_COMMIT_MESSAGE" value="2022 11 02: added kannada mnist aug with cut out augmentation, now the acc doesn't go above certain level anymore" />
+    <MESSAGE value="2022 11 02b: now added a flag" />
+    <option name="LAST_COMMIT_MESSAGE" value="2022 11 02b: now added a flag" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/helpers.py">
