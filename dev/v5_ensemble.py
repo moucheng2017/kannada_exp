@@ -6,7 +6,7 @@ import os
 from torchcontrib.optim import SWA
 
 
-from Helpers import *
+from Augmentations import *
 from Model_cnn import *
 
 

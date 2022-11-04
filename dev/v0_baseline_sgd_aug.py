@@ -9,7 +9,7 @@ from torch.utils.data import TensorDataset
 from torch.optim.lr_scheduler import StepLR
 import os
 
-from Helpers import DatasetKMNIST
+from Augmentations import DatasetKMNIST
 
 
 def args_parser():

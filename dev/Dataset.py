@@ -144,6 +144,8 @@ class DatasetKannadaMNIST(Dataset):
             return image
 
 
+
+
 # class DatasetKMNIST(Dataset):
 #     def __init__(self, images_path, labels_path, transform):
 #         self.images = pd.read_csv(images_path)
