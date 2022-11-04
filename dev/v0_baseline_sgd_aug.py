@@ -11,6 +11,7 @@ import os
 
 from Helpers import DatasetKMNIST
 
+
 def args_parser():
     parser = argparse.ArgumentParser('Training with SGD and augmentation on K-MNIST', add_help=False)
     parser.add_argument('--seed', '-s', default=2022, type=int, help='Random seed')

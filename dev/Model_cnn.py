@@ -25,18 +25,25 @@ def conv_layer(dim_in, dim_out, k, p, s, dropout=0.0):
     return layers
 
 
-def fc_layer(dim_in, dim_out, dropout=0.0):
+def fc_layer(dim_in, dropout=0.0):
     if dropout == 0.0 or dropout == 0:
         layers = nn.Sequential(
-            nn.Linear(dim_in, dim_out),
-            nn.BatchNorm1d(dim_out),
+            nn.Linear(dim_in, 256),
+            nn.BatchNorm1d(256),
+            nn.PReLU(),
+            nn.Linear(256, 256),
+            nn.BatchNorm1d(256),
             nn.PReLU()
         )
     else:
         layers = nn.Sequential(
-            nn.Linear(dim_in, dim_out),
+            nn.Linear(dim_in, 256),
             nn.Dropout(p=dropout),
-            nn.BatchNorm1d(dim_out),
+            nn.BatchNorm1d(256),
+            nn.PReLU(),
+            nn.Linear(256, 256),
+            nn.Dropout(p=dropout),
+            nn.BatchNorm1d(256),
             nn.PReLU()
         )
     return layers
@@ -65,7 +72,7 @@ class CNN(nn.Module):
         r = flatten(w=28, k=kernel, s=2, p=padding)
         self.conv_layers = nn.ModuleList()
 
-        assert depth <= 5
+        # assert depth <= 5
 
         for i in range(depth-2):
             if i == 0:
