@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class Net(nn.Module):
@@ -14,9 +15,9 @@ class Net(nn.Module):
     def forward(self, x):
         x = F.leaky_relu((self.conv1(x)), 0.1)
         x = F.dropout(x, p=self.dropout, training=self.training)
-        x = F.max_pool2d(F.leaky_relu(self.conv2(x), 2), 0.1)
+        x = F.max_pool2d(F.leaky_relu(self.conv2(x), 0.1), 2)
         x = F.dropout(x, p=self.dropout, training=self.training)
-        x = F.max_pool2d(F.leaky_relu(self.conv3(x), 2), 0.1)
+        x = F.max_pool2d(F.leaky_relu(self.conv3(x), 0.1), 2)
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.view(-1, 3 * 3 * 64)
         x = F.leaky_relu(self.fc1(x), 0.1)
