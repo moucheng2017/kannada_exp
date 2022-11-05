@@ -51,9 +51,9 @@ def trainer(args):
             pseudo_labels_soft = torch.softmax(outputs2.detach() / 2.0, dim=-1)
             prob, pseudo_labels = torch.max(pseudo_labels_soft, 1, keepdim=False)
 
-        mask = prob.ge(0.95).float()
+        mask = prob.ge(0.95).float() # we only use high confident predictions as pseudo labels
         loss = criterion(outputs, labels) # superivsed learning on labelled data
-        pseudo_loss = alpha_current*(F.cross_entropy(outputs2, pseudo_labels, reduction='none') * mask).mean()
+        pseudo_loss = alpha_current*(F.cross_entropy(outputs2 * mask.unsqueeze(1), (pseudo_labels * mask).long(), reduction='mean')).mean() # unsupervised learning
         loss += pseudo_loss
 
         loss.backward()
