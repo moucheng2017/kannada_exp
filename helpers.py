@@ -23,22 +23,22 @@ def preprocess(train_data_path, val_data_path, test_data_path):
     train_x = train.iloc[:, 1:].values / 255.
     train_y = train.iloc[:, 0].values
     train_mean, train_std = np.nanmean(train_x), np.nanstd(train_x) # normalisation
-    # train_x = (train_x - train_mean) / train_std
+    train_x = (train_x - train_mean) / train_std
     train_x = np.reshape(train_x, (60000, 1, 28, 28))
 
     val_x = val.iloc[:, 1:].values / 255.
     val_y = val.iloc[:, 0].values
     val_mean, val_std = np.nanmean(val_x), np.nanstd(val_x)
-    # val_x = (val_x - val_mean) / val_std
+    val_x = (val_x - val_mean) / val_std
     val_x = np.reshape(val_x, (10240, 1, 28, 28))
 
     test_x = test.iloc[:, 1:].values / 255.
     test_mean, test_std = np.nanmean(test_x), np.nanstd(test_x)
-    # test_x = (test_x - test_mean) / test_std
+    test_x = (test_x - test_mean) / test_std
     test_x = np.reshape(test_x, (5000, 1, 28, 28)) # this will be test_x = np.reshape(test_x, (-1, 1, 28, 28))
     test_y = np.zeros(np.shape(test_x)[0])
 
-    return train_x, train_y, val_x, val_y, test_x, test_y, train_mean, train_std, val_mean, val_std, test_mean, test_std
+    return train_x, train_y, val_x, val_y, test_x, test_y
 
 
 def get_dataloaders(train_x, train_y, val_x, val_y, test_x, test_y, batch, batch_test):

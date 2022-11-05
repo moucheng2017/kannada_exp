@@ -25,7 +25,6 @@ strong_transforms = torch.jit.script(strong_augmentation)
 
 
 weak_augmentation = torch.nn.Sequential(
-    # transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
     transforms.RandomVerticalFlip(0.5),
     transforms.RandomHorizontalFlip(0.5)
 )
@@ -39,7 +38,7 @@ def trainer(args):
 
     # data loaders
     train_data_path, val_data_path, test_data_path, result_data_path = get_data_full_path(args.path)
-    train_x, train_y, val_x, val_y, test_x, test_y, train_mean, train_std, val_mean, val_std, test_mean, test_std = preprocess(train_data_path, val_data_path, test_data_path)
+    train_x, train_y, val_x, val_y, test_x, test_y = preprocess(train_data_path, val_data_path, test_data_path)
     train_loader, val_loader, test_loader = get_dataloaders(train_x, train_y, val_x, val_y, test_x, test_y, args.batch, args.batch_test)
     train_iterator = iter(train_loader)
     test_iterator = iter(test_loader)
@@ -53,9 +52,11 @@ def trainer(args):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(network.parameters(), lr=args.lr)
     steps_each_epoch = 60000 // args.batch
-    warmup_steps = int(0.7*args.steps)
+    total_steps = steps_each_epoch*args.epochs
+    warmup_steps = int(0.75*total_steps)
+    best_val_acc = 0.0
 
-    for j in range(args.steps):
+    for j in range(total_steps):
 
         if j < steps_each_epoch * args.ssl_start:
             alpha_current = 0
@@ -80,29 +81,23 @@ def trainer(args):
         with torch.no_grad():
 
             if args.sup_aug == 1:
-                # augmentation:
                 if random.random() >= 0.5:
                     images = weak_augmentation(images)
-                if random.random() >= 0.5:
+                else:
                     images = strong_augmentation(images)
-                    images = (images - train_mean) / train_std
+
                 if random.random() >= 0.5:
                     images = cutout(images)
-                else:
-                    images = (images - train_mean) / train_std
 
             if args.unsup_aug == 1:
                 images_u_s = strong_augmentation(images_u)
-                images_u_s = (images_u_s - test_mean) / test_std
                 images_u_s = cutout(images_u_s)
+
                 images_u_w = weak_augmentation(images_u)
-                images_u_w = (images_u_w - test_mean) / test_std
+
             else:
                 images_u_w = images_u
-                images_u_w = (images_u_w - test_mean) / test_std
-                images_u_s = weak_augmentation(images_u)
-                images_u_s = (images_u_s - test_mean) / test_std
-                images_u_s = cutout(images_u_s)
+                images_u_s = cutout(images_u)
 
             outputs_u_w = network(images_u_w)  # output of unlabelled data original
             pseudo_labels_soft = torch.softmax(outputs_u_w.detach() / 2.0, dim=-1)
@@ -119,7 +114,7 @@ def trainer(args):
         optimizer.step()
 
         if args.lr_decay == 1:
-            optimizer.param_groups[0]['lr'] = args.lr * (1 - j / args.steps) ** 0.99
+            optimizer.param_groups[0]['lr'] = args.lr * (1 - j / total_steps) ** 0.99
             current_lr = optimizer.param_groups[0]['lr']
         else:
             current_lr = args.lr
@@ -130,7 +125,7 @@ def trainer(args):
         running_loss = loss.item()
         train_acc = 100 * train_acc
 
-        if j % steps_each_epoch == 0:
+        if j % 100 == 0:
             # evaluation:
             network.eval()
             val_acc = 0
@@ -138,25 +133,47 @@ def trainer(args):
             with torch.no_grad():
                 for (v_img, v_target) in val_loader:
                     counter_v += 1
-                    v_img = (v_img - val_mean) / val_std
                     v_output = network(v_img)
                     v_pred = v_output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
                     v_correct = v_pred.eq(v_target.view_as(v_pred)).sum().item()
                     val_acc += v_correct / v_img.size()[0]
             val_acc = 100 * val_acc / counter_v
             print('[step %d] loss: %.4f, lr: %.4f, train acc:%.4f, val acc: %.4f' % (j + 1, running_loss, current_lr, train_acc, val_acc))
+            if val_acc > best_val_acc:
+                # save model
+                torch.save(network.state_dict(), 'model.pt')
+                # update best val acc
+                best_val_acc = max(best_val_acc, val_acc)
 
     print('Finished Training\n')
 
+    # last evaluation:
+    if args.network == 'resnet':
+        bestnetwork = ResNet50(10, 1).cuda()
+    else:
+        bestnetwork = Net(0.5).cuda()  # dropout ratio 0.5
+    bestnetwork.load_state_dict(torch.load('model.pt'))
+    bestnetwork.eval()
+    val_acc = 0
+    counter_v = 0
+    with torch.no_grad():
+        for (v_img, v_target) in val_loader:
+            counter_v += 1
+            v_output = bestnetwork(v_img)
+            v_pred = v_output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            v_correct = v_pred.eq(v_target.view_as(v_pred)).sum().item()
+            val_acc += v_correct / v_img.size()[0]
+    val_acc = 100 * val_acc / counter_v
+    print('Final val acc: %.4f' % val_acc)
+
     # testing:
-    network.eval()
+    # network.eval()
     predictions = []
     test_x_o = np.shape(test_x)[0]
     for i in range(test_x_o):
         data = np.expand_dims(test_x[i, :, :, :], axis=0)
-        data = (data - test_mean) / test_std
         data = torch.from_numpy(data).type(torch.FloatTensor).to('cuda')
-        pred = network(data)
+        pred = bestnetwork(data)
         pred = pred.max(dim=1)[1]
         predictions += list(pred.data.cpu().numpy())
 
