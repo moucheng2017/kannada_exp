@@ -5,6 +5,7 @@ import torch
 import math
 import numpy as np
 from torch.utils.data import Dataset
+import torch.optim as optim
 
 
 def get_data_full_path(path):
@@ -34,7 +35,7 @@ def preprocess(train_data_path, val_data_path, test_data_path):
     test_x = test.iloc[:, 1:].values / 255.
     test_mean, test_std = np.nanmean(test_x), np.nanstd(test_x)
     test_x = (test_x - test_mean) / test_std
-    test_x = np.reshape(test_x, (5000, 1, 28, 28))
+    test_x = np.reshape(test_x, (5000, 1, 28, 28)) # this will be test_x = np.reshape(test_x, (-1, 1, 28, 28))
     test_y = np.zeros(np.shape(test_x)[0])
 
     return train_x, train_y, val_x, val_y, test_x, test_y

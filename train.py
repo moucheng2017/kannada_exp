@@ -19,13 +19,13 @@ def trainer(args):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(network.parameters(), lr=args.lr)
 
-    steps_each_epoch = 60000 // batch
+    steps_each_epoch = 60000 // args.batch
     for j in range(args.steps):
 
         if j < steps_each_epoch * 20:
             alpha_current = 0
         else:
-            alpha_current = min(alpha, 2 * j / args.steps)
+            alpha_current = min(args.alpha, 2 * j / args.steps)
 
         network.train()
         running_loss = 0.0
