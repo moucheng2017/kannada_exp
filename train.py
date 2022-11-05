@@ -6,6 +6,7 @@ from models import *
 from dev_history.Models_resnet152 import ResNet50
 from helpers import *
 
+
 def cutout(image):
     patch_h = np.random.randint(0, 14)
     patch_w = np.random.randint(0, 14)
@@ -38,7 +39,7 @@ def trainer(args):
 
     # data loaders
     train_data_path, val_data_path, test_data_path, result_data_path = get_data_full_path(args.path)
-    train_x, train_y, val_x, val_y, test_x, test_y = preprocess(train_data_path, val_data_path, test_data_path)
+    train_x, train_y, val_x, val_y, test_x, test_y, train_mean, train_std, test_mean, test_std = preprocess(train_data_path, val_data_path, test_data_path)
     train_loader, val_loader, test_loader = get_dataloaders(train_x, train_y, val_x, val_y, test_x, test_y, args.batch, args.batch_test)
     train_iterator = iter(train_loader)
     test_iterator = iter(test_loader)
@@ -82,17 +83,22 @@ def trainer(args):
                 # augmentation:
                 if random.random() >= 0.5:
                     images = weak_augmentation(images)
+                    images = (images - train_mean) / train_std
                 if random.random() >= 0.5:
                     images = strong_augmentation(images)
+                    images = (images - train_mean) / train_std
                 if random.random() >= 0.5:
                     images = cutout(images)
 
             if args.unsup_aug == 1:
                 images_u_s = cutout(strong_augmentation(images_u))
+                images_u_s = (images_u_s - test_mean) / test_std
                 images_u_w = weak_augmentation(images_u)
+                images_u_w = (images_u_w - test_mean) / test_std
             else:
                 images_u_w = images_u
                 images_u_s = cutout(weak_augmentation(images_u))
+                images_u_s = (images_u_s - test_mean) / test_std
 
             outputs_u_w = network(images_u_w)  # output of unlabelled data original
             pseudo_labels_soft = torch.softmax(outputs_u_w.detach() / 2.0, dim=-1)

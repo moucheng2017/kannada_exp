@@ -38,7 +38,7 @@ def preprocess(train_data_path, val_data_path, test_data_path):
     test_x = np.reshape(test_x, (5000, 1, 28, 28)) # this will be test_x = np.reshape(test_x, (-1, 1, 28, 28))
     test_y = np.zeros(np.shape(test_x)[0])
 
-    return train_x, train_y, val_x, val_y, test_x, test_y
+    return train_x, train_y, val_x, val_y, test_x, test_y, train_mean, train_std, test_mean, test_std
 
 
 def get_dataloaders(train_x, train_y, val_x, val_y, test_x, test_y, batch, batch_test):
