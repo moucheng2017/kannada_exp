@@ -2,7 +2,7 @@
 This repository is an implementation for a submission to kannada mnist classification
 using a semi supervised learning. The current solution first trains on labelled data up until 20 epochs,
 then it switches to semi supervised learning by training on selected high confident pseudo labels on
-unlabelled testing data. 
+unlabelled testing data, with FixMatch style ssl.
 
 
 
