@@ -18,14 +18,16 @@ def trainer(args):
     network = Net(0.5).cuda() # dropout ratio 0.5
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(network.parameters(), lr=args.lr)
-
     steps_each_epoch = 60000 // args.batch
+    warmup_steps = int(0.5*args.steps)
     for j in range(args.steps):
 
         if j < steps_each_epoch * 20:
             alpha_current = 0
+        elif j < warmup_steps:
+            alpha_current = min(args.alpha, j / warmup_steps)
         else:
-            alpha_current = min(args.alpha, 2 * j / args.steps)
+            alpha_current = args.alpha
 
         network.train()
         running_loss = 0.0
@@ -59,6 +61,8 @@ def trainer(args):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
+        optimizer.param_groups[0]['lr'] = args.lr * (1 - j / args.steps) ** 0.99
+        current_lr = optimizer.param_groups[0]['lr']
 
         preds = outputs.argmax(dim=1, keepdim=True)
         correct = preds.eq(labels.view_as(preds)).sum().item()
@@ -79,7 +83,7 @@ def trainer(args):
                     v_correct = v_pred.eq(v_target.view_as(v_pred)).sum().item()
                     val_acc += v_correct / v_img.size()[0]
             val_acc = 100 * val_acc / counter_v
-            print('[step %d] loss: %.4f, train acc:% 4f, val acc: %.4f' % (j + 1, running_loss, train_acc, val_acc))
+            print('[step %d] loss: %.4f, lr: %.4f, train acc:%.4f, val acc: %.4f' % (j + 1, running_loss, current_lr, train_acc, val_acc))
 
     print('Finished Training\n')
 
