@@ -25,7 +25,7 @@ strong_transforms = torch.jit.script(strong_augmentation)
 
 
 weak_augmentation = torch.nn.Sequential(
-    transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
+    # transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
     transforms.RandomVerticalFlip(0.5),
     transforms.RandomHorizontalFlip(0.5)
 )
@@ -39,7 +39,7 @@ def trainer(args):
 
     # data loaders
     train_data_path, val_data_path, test_data_path, result_data_path = get_data_full_path(args.path)
-    train_x, train_y, val_x, val_y, test_x, test_y, train_mean, train_std, test_mean, test_std = preprocess(train_data_path, val_data_path, test_data_path)
+    train_x, train_y, val_x, val_y, test_x, test_y, train_mean, train_std, val_mean, val_std, test_mean, test_std = preprocess(train_data_path, val_data_path, test_data_path)
     train_loader, val_loader, test_loader = get_dataloaders(train_x, train_y, val_x, val_y, test_x, test_y, args.batch, args.batch_test)
     train_iterator = iter(train_loader)
     test_iterator = iter(test_loader)
@@ -83,22 +83,26 @@ def trainer(args):
                 # augmentation:
                 if random.random() >= 0.5:
                     images = weak_augmentation(images)
-                    images = (images - train_mean) / train_std
                 if random.random() >= 0.5:
                     images = strong_augmentation(images)
                     images = (images - train_mean) / train_std
                 if random.random() >= 0.5:
                     images = cutout(images)
+                else:
+                    images = (images - train_mean) / train_std
 
             if args.unsup_aug == 1:
-                images_u_s = cutout(strong_augmentation(images_u))
+                images_u_s = strong_augmentation(images_u)
                 images_u_s = (images_u_s - test_mean) / test_std
+                images_u_s = cutout(images_u_s)
                 images_u_w = weak_augmentation(images_u)
                 images_u_w = (images_u_w - test_mean) / test_std
             else:
                 images_u_w = images_u
-                images_u_s = cutout(weak_augmentation(images_u))
+                images_u_w = (images_u_w - test_mean) / test_std
+                images_u_s = weak_augmentation(images_u)
                 images_u_s = (images_u_s - test_mean) / test_std
+                images_u_s = cutout(images_u_s)
 
             outputs_u_w = network(images_u_w)  # output of unlabelled data original
             pseudo_labels_soft = torch.softmax(outputs_u_w.detach() / 2.0, dim=-1)
@@ -134,6 +138,7 @@ def trainer(args):
             with torch.no_grad():
                 for (v_img, v_target) in val_loader:
                     counter_v += 1
+                    v_img = (v_img - val_mean) / val_std
                     v_output = network(v_img)
                     v_pred = v_output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
                     v_correct = v_pred.eq(v_target.view_as(v_pred)).sum().item()
@@ -149,6 +154,7 @@ def trainer(args):
     test_x_o = np.shape(test_x)[0]
     for i in range(test_x_o):
         data = np.expand_dims(test_x[i, :, :, :], axis=0)
+        data = (data - test_mean) / test_std
         data = torch.from_numpy(data).type(torch.FloatTensor).to('cuda')
         pred = network(data)
         pred = pred.max(dim=1)[1]
