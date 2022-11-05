@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="04ba6a09-1f28-4192-9838-65ad8e49115c" name="Default Changelist" comment="">
+    <list default="true" id="04ba6a09-1f28-4192-9838-65ad8e49115c" name="Default Changelist" comment="2022 11 07:">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
     </list>
@@ -177,7 +175,14 @@
       <option name="project" value="LOCAL" />
       <updated>1667662187381</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="2022 11 06: debugging 2">
+      <created>1667663942566</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1667663942566</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -236,7 +241,8 @@
     <MESSAGE value="2022 11 05 a: some debugging" />
     <MESSAGE value=".." />
     <MESSAGE value="2022 11 05: added masked version of pseudo label loss" />
-    <option name="LAST_COMMIT_MESSAGE" value="2022 11 05: added masked version of pseudo label loss" />
+    <MESSAGE value="2022 11 06: debugging 2" />
+    <option name="LAST_COMMIT_MESSAGE" value="2022 11 06: debugging 2" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/dev/MNIST.ipynb">

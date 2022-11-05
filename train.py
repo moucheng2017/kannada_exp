@@ -1,5 +1,34 @@
+import random
+
+from torchvision import transforms
+import torchvision
 from models import *
+from dev_history.Models_resnet152 import ResNet50
 from helpers import *
+
+def cutout(image):
+    patch_h = np.random.randint(0, 14)
+    patch_w = np.random.randint(0, 14)
+
+    h0 = np.random.randint(0, 28 - patch_h)
+    w0 = np.random.randint(0, 28 - patch_w)
+    image[:, :, h0:h0 + patch_h, w0:w0 + patch_w] = 0.0
+    return image
+
+
+strong_augmentation = torch.nn.Sequential(
+    transforms.RandomRotation((-60, 60)),
+    transforms.RandomAffine(degrees=(-10, 10), translate=(0.1, 0.4), interpolation=torchvision.transforms.InterpolationMode.BILINEAR, shear=10)
+)
+strong_transforms = torch.jit.script(strong_augmentation)
+
+
+weak_augmentation = torch.nn.Sequential(
+    transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
+    transforms.RandomVerticalFlip(0.5),
+    transforms.RandomHorizontalFlip(0.5)
+)
+weak_transforms = torch.jit.script(weak_augmentation)
 
 
 def trainer(args):
@@ -15,60 +44,81 @@ def trainer(args):
     test_iterator = iter(test_loader)
 
     # networks and optimizer:
-    network = Net(0.5).cuda() # dropout ratio 0.5
+    if args.network == 'resnet':
+        network = ResNet50(10, 1).cuda()
+    else:
+        network = Net(0.5).cuda()  # dropout ratio 0.5
+
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(network.parameters(), lr=args.lr)
     steps_each_epoch = 60000 // args.batch
-    warmup_steps = int(0.5*args.steps)
+    warmup_steps = int(0.7*args.steps)
+
     for j in range(args.steps):
 
-        if j < steps_each_epoch * 20:
+        if j < steps_each_epoch * args.ssl_start:
             alpha_current = 0
         elif j < warmup_steps:
-            alpha_current = min(args.alpha, j / warmup_steps)
+            alpha_current = min(args.alpha, args.alpha * (j - args.ssl_start) / (warmup_steps - args.ssl_start))
         else:
             alpha_current = args.alpha
 
         network.train()
-        running_loss = 0.0
-        train_acc = 0.0
-        counter_t = 0
 
         try:
             images, labels = next(train_iterator)
-            images2, _ = next(test_iterator)
+            images_u, _ = next(test_iterator)
         except StopIteration:
             train_iterator = iter(train_loader)
             test_iterator = iter(test_loader)
             images, labels = next(train_iterator)
-            images2, _ = next(test_iterator)
+            images_u, _ = next(test_iterator)
 
         optimizer.zero_grad()
-        counter_t += 1
-
-        outputs = network(images)
-        outputs2 = network(images2) # output of unlabelled data
 
         with torch.no_grad():
-            pseudo_labels_soft = torch.softmax(outputs2.detach() / 2.0, dim=-1)
-            prob, pseudo_labels = torch.max(pseudo_labels_soft, 1, keepdim=False)
 
-        mask = prob.ge(0.95).float() # we only use high confident predictions as pseudo labels
+            if args.sup_aug == 1:
+                # augmentation:
+                if random.random() >= 0.5:
+                    images = weak_augmentation(images)
+                if random.random() >= 0.5:
+                    images = strong_augmentation(images)
+                if random.random() >= 0.5:
+                    images = cutout(images)
+
+            if args.unsup_aug == 1:
+                images_u_s = cutout(strong_augmentation(images_u))
+                images_u_w = weak_augmentation(images_u)
+            else:
+                images_u_w = images_u
+                images_u_s = cutout(weak_augmentation(images_u))
+
+            outputs_u_w = network(images_u_w)  # output of unlabelled data original
+            pseudo_labels_soft = torch.softmax(outputs_u_w.detach() / 2.0, dim=-1)
+            prob, pseudo_labels = torch.max(pseudo_labels_soft, 1, keepdim=False)
+            mask = prob.ge(0.95).float()  # we only use high confident predictions as pseudo labels
+
+        outputs = network(images)
         loss = criterion(outputs, labels) # superivsed learning on labelled data
-        pseudo_loss = alpha_current*(F.cross_entropy(outputs2 * mask.unsqueeze(1), (pseudo_labels * mask).long(), reduction='mean')).mean() # unsupervised learning
+        outputs_u = network(images_u_s)  # output of unlabelled data original after augmentation
+        pseudo_loss = alpha_current*(criterion(outputs_u * mask.unsqueeze(1), (pseudo_labels * mask).long())).mean() # unsupervised learning
         loss += pseudo_loss
 
         loss.backward()
         optimizer.step()
-        running_loss += loss.item()
-        optimizer.param_groups[0]['lr'] = args.lr * (1 - j / args.steps) ** 0.99
-        current_lr = optimizer.param_groups[0]['lr']
+
+        if args.lr_decay == 1:
+            optimizer.param_groups[0]['lr'] = args.lr * (1 - j / args.steps) ** 0.99
+            current_lr = optimizer.param_groups[0]['lr']
+        else:
+            current_lr = args.lr
 
         preds = outputs.argmax(dim=1, keepdim=True)
         correct = preds.eq(labels.view_as(preds)).sum().item()
-        train_acc += correct / images.size()[0]
-        running_loss = running_loss / counter_t
-        train_acc = 100 * train_acc / counter_t
+        train_acc = correct / images.size()[0]
+        running_loss = loss.item()
+        train_acc = 100 * train_acc
 
         if j % steps_each_epoch == 0:
             # evaluation:
