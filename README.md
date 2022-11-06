@@ -1,10 +1,15 @@
 ### Introduction
 This repository is an implementation for a submission to kannada mnist classification
-using a semi-supervised learning with best validation acc on Dig-MNIST at 86% and testing acc at 98.72%.
-The current model is a very simple 3 layers CNN. We train the model with  two parts:
-1) supervised learning on labelled data
-2) unsupervised learning between logits after heavy data augmentation (Cutout) and high confident pseudo labels.
+using a semi-supervised learning with 
+best validation acc on Dig-MNIST at 86% and 
+best testing acc at 98.72% (private) and 98.74%(public).
 
+We tested with a simple 3 layers CNN and a VGG-like network and the training strategy is:
+1) supervised learning on labelled data
+2) unsupervised learning on unlabelled data after heavy data augmentation and high confident pseudo labels.
+3) when use data augmentation (zoom, rotation, affine) on labelled data, it seems like small lr 0.001 works better, 
+without data augmentation on labelled data, seems like large lr 0.01 works well.
+4) polynominal learning rate decay
 
 ### Installation and Usage
 This repository is based on PyTorch 1.4 and it needs numpy, os, maths, random, pandas libraries.
@@ -15,8 +20,7 @@ To train the model with default hyper parameters:
    python run.py --path 'path/to/your/kannada_dataset' 
    ```
 
-However, those hyper parameters might not be the most optimal ones, especially for the warm-up ratio, weight on unsupervised learning part and augmentation.
-
+However, those hyper parameters might not be the most optimal ones.
 
 ### Some attempts I tried but somehow didn't improve results:
 1. large model including vgg and resent18, resnet80, however, it didn't improve the validation accuracy and they are very slow to train so not used due to time constraints.
