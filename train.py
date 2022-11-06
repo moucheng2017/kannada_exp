@@ -53,7 +53,7 @@ def trainer(args):
     optimizer = optim.AdamW(network.parameters(), lr=args.lr)
     steps_each_epoch = 60000 // args.batch
     total_steps = steps_each_epoch*args.epochs
-    warmup_steps = int(0.75*total_steps)
+    warmup_steps = int(args.warmup*total_steps)
     best_val_acc = 0.0
 
     for j in range(total_steps):
@@ -61,7 +61,7 @@ def trainer(args):
         if j < steps_each_epoch * args.ssl_start:
             alpha_current = 0
         elif j < warmup_steps:
-            alpha_current = min(args.alpha, args.alpha * (j - args.ssl_start) / (warmup_steps - args.ssl_start))
+            alpha_current = min(args.alpha, args.alpha * (j - steps_each_epoch * args.ssl_start) / (warmup_steps - steps_each_epoch * args.ssl_start))
         else:
             alpha_current = args.alpha
 
