@@ -31,6 +31,14 @@ weak_augmentation = torch.nn.Sequential(
 weak_transforms = torch.jit.script(weak_augmentation)
 
 
+train_augmentation = torch.nn.Sequential(
+    transforms.RandomResizedCrop((28, 28)),
+    transforms.RandomRotation((-60, 60)),
+    transforms.RandomAffine(degrees=(-10, 10), translate=(0.1, 0.4), interpolation=torchvision.transforms.InterpolationMode.BILINEAR, shear=10)
+)
+train_transforms = torch.jit.script(train_augmentation)
+
+
 def trainer(args):
     # reproducibility
     torch.manual_seed(args.seed)
@@ -44,8 +52,10 @@ def trainer(args):
     test_iterator = iter(test_loader)
 
     # networks and optimizer:
-    if args.network == 'resnet':
+    if args.net == 'resnet':
         network = ResNet50(10, 1).cuda()
+    elif args.net == 'vgg':
+        network = Vgglight().cuda()
     else:
         network = Net(0.5).cuda()  # dropout ratio 0.5
 
@@ -81,19 +91,16 @@ def trainer(args):
         with torch.no_grad():
 
             if args.sup_aug == 1:
-                if random.random() >= 0.5:
-                    images = weak_augmentation(images)
-                else:
-                    images = strong_augmentation(images)
-
-                if random.random() >= 0.5:
+                if random.random() < 0.34:
+                    images = train_transforms(images)
+                elif random.random() < 0.68:
                     images = cutout(images)
 
             if args.unsup_aug == 1:
-                images_u_s = strong_augmentation(images_u)
+                images_u_s = strong_transforms(images_u)
                 images_u_s = cutout(images_u_s)
 
-                images_u_w = weak_augmentation(images_u)
+                images_u_w = weak_transforms(images_u)
 
             else:
                 images_u_w = images_u
@@ -148,10 +155,13 @@ def trainer(args):
     print('Finished Training\n')
 
     # last evaluation:
-    if args.network == 'resnet':
+    if args.net == 'resnet':
         bestnetwork = ResNet50(10, 1).cuda()
+    elif args.net == 'vgg':
+        bestnetwork = Vgglight().cuda()
     else:
         bestnetwork = Net(0.5).cuda()  # dropout ratio 0.5
+
     bestnetwork.load_state_dict(torch.load('model.pt'))
     bestnetwork.eval()
     val_acc = 0
