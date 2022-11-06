@@ -1,9 +1,9 @@
 ### Introduction
 This repository is an implementation for a submission to kannada mnist classification
-using a semi supervised learning. The current solution first trains on labelled data up until 20 epochs,
-then it switches to semi supervised learning by training on selected high confident pseudo labels on
-unlabelled testing data, with FixMatch style ssl.
-
+using a semi-supervised learning with best validation acc on Dig-MNIST at 86% and testing acc at 98.72%.
+The current model is a very simple 3 layers CNN. We train the model with  two parts:
+1) supervised learning on labelled data
+2) unsupervised learning between logits after heavy data augmentation (Cutout) and high confident pseudo labels.
 
 
 ### Installation and Usage
@@ -15,18 +15,20 @@ To train the model with default hyper parameters:
    python run.py --path 'path/to/your/kannada_dataset' 
    ```
 
+However, those hyper parameters might not be the most optimal ones, especially for the warm-up ratio, weight on unsupervised learning part and augmentation.
+
+
 ### Some attempts I tried but somehow didn't improve results:
-1. large model including vgg and resent18, resnet80, however, it didn't improve the validation accuracy
+1. large model including vgg and resent18, resnet80, however, it didn't improve the validation accuracy and they are very slow to train so not used due to time constraints.
 
 2. Complicated data augmentation could even bring the performance down 
-if not used carefully with this data set. Also they are pretty slow, so the current code doesn't
-include data augmentation apart from normalisation. I tried both torchvision and my own augmentation implementation such as cutout
+if not used carefully with this data set.
 
-3. Ensemble improved validation acc on Dig-MNIST to 84%, however it doesn't help
+3. Ensemble (Stochastic weight average, different initialisation, different dropouts) improved validation acc on Dig-MNIST to 84%, however it doesn't help
 with the test somehow. I tried ensemble on different model architectures and different
 model capacities.
 
-4. I also tried other regularisation such as consistency on different views of input, et al.
+4. I also tried other regularisation such as consistency on different views of input, et al. might need more hp search
 
 
 ### Some issues I encountered:
